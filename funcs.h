@@ -1,7 +1,7 @@
 #ifndef FUNCS_H
 #define FUNCS_H
 
-// These are the shared constants used by funcs.c and main.c
+// These are the shared constants which are used by funcs.c and main.c
 #define MAX_LENGTH 128
 #define MIN_LENGTH 8
 
