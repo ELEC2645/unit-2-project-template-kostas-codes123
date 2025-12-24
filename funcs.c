@@ -210,7 +210,7 @@ static void analyse_password(const char password[], struct PasswordReport *rep)
     if (rep->is_top20)     rep->score -= 3;
     if (rep->has_sequence) rep->score -= 2;
 
-    // Step H: clamp 0..10 
+    // clamp from 0 to 10 
     if (rep->score < 0) rep->score = 0;
     if (rep->score > 10) rep->score = 10;
 }
