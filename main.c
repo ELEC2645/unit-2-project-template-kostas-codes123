@@ -1,33 +1,33 @@
-// ELEC2645 Unit 2 Project Template
-// Command Line Application Menu Handling Code
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <math.h>
+
 #include "funcs.h"
 
-/* Prototypes mirroring the C++ version */
-static void main_menu(void);            /* runs in the main loop */
-static void print_main_menu(void);      /* output the main menu description */
-static int  get_user_input(void);       /* get a valid integer menu choice */
-static void select_menu_item(int input);/* run code based on user's choice */
-static void go_back_to_main(void);      /* wait for 'b'/'B' to continue */
-static int  is_integer(const char *s);  /* validate integer string */
+// Prototypes only in this file (static = private to main.c)
+static void main_menu(void);
+static void print_main_menu(void);
+static int  get_user_input(void);
+static void select_menu_item(int input);
+static void go_back_to_main(void);
+static int  is_integer(const char *s);
+
+// Global password buffer shared across menu items
+static char password[MAX_LENGTH] = "";
 
 int main(void)
 {
-    /* this will run forever until we call exit(0) in select_menu_item() */
-    for(;;) {
+    // Main program loop it shows menu, handles selection, repeats until Exit
+    for (;;) {
         main_menu();
     }
-    /* not reached */
-    return 0;
+    return 0; // Unreachable (exit() used), but keeps main well-formed
 }
 
 static void main_menu(void)
 {
+    // One menu cycle: print menu, read choice, dispatch to handler
     print_main_menu();
     {
         int input = get_user_input();
@@ -35,104 +35,122 @@ static void main_menu(void)
     }
 }
 
+static void print_main_menu(void)
+{
+    // Keep menu text in one place for easy editing
+    puts("");
+    puts("==== Password Strength Menu ====");
+    puts("1) Enter password");
+    puts("2) Compute score + print feedback");
+    puts("3) Show basic checks (min length / char types / common / sequence)");
+    puts("4) Clear password");
+    puts("5) Exit");
+    puts("================================");
+}
+
 static int get_user_input(void)
 {
-    enum { MENU_ITEMS = 5 };   /* 1..4 = items, 5 = Exit */
-    char buf[128];
-    int valid_input = 0;
-    int value = 0;
+    // Read a full line (fgets) and essecially avoids scanf() input issues
+    char buf[64];
 
-    do {
-        printf("\nSelect item: ");
-        if (!fgets(buf, sizeof(buf), stdin)) {
-            /* EOF or error; bail out gracefully */
-            puts("\nInput error. Exiting.");
-            exit(1);
+    for (;;) {
+        printf("Select option: ");
+        if (fgets(buf, sizeof buf, stdin) == NULL) {
+            /* EOF / error => exit */
+            return 5;
         }
-
-        // strip trailing newline
+// Strip trailing newline so validation is predictable
         buf[strcspn(buf, "\r\n")] = '\0';
-
-        if (!is_integer(buf)) {
-            printf("Enter an integer!\n");
-            valid_input = 0;
-        } else {
-            value = (int)strtol(buf, NULL, 10);
-            if (value >= 1 && value <= MENU_ITEMS) {
-                valid_input = 1;
-            } else {
-                printf("Invalid menu item!\n");
-                valid_input = 0;
-            }
+// Accept only integers
+        if (is_integer(buf)) {
+            return atoi(buf);
         }
-    } while (!valid_input);
 
-    return value;
+        puts("Invalid input (enter a number).");
+    }
 }
 
 static void select_menu_item(int input)
 {
+    // Dispatch based on the user's menu choice
     switch (input) {
-        case 1:
-            menu_item_1();
-            go_back_to_main();
-            break;
-        case 2:
-            menu_item_2();
-            go_back_to_main();
-            break;
-        case 3:
-            menu_item_3();
-            go_back_to_main();
-            break;
-        case 4:
-            menu_item_4();
-            go_back_to_main();
-            break;
-        default:
-            printf("Bye!\n");
-            exit(0);
-    }
-}
+    case 1:
+    // Store the password for later
+        read_password_from_user(password, (int)sizeof password);
+        go_back_to_main();
+        break;
 
-static void print_main_menu(void)
-{
-    printf("\n----------- Main menu -----------\n");
-    printf("\n"
-           "\t\t\t\t\t\t\n"
-           "\t1. Menu item 1\t\t\n"
-           "\t2. Menu item 2\t\t\n"
-           "\t3. Menu item 3\t\t\n"
-           "\t4. Menu item 4\t\t\n"
-           "\t5. Exit\t\t\t\t\n"
-           "\t\t\t\t\t\t\n");
-    printf("---------------------------------------------\n");
+    case 2:
+        if (password[0] == '\0') {
+            puts("No password set yet. Choose option 1 first.");
+        } else {
+            int score = compute_password_score(password);
+            print_password_feedback(password, score);
+        }
+        go_back_to_main();
+        break;
+
+    case 3:
+    // Show each rule check result for the current password
+        if (password[0] == '\0') {
+            puts("No password set yet. Choose option 1 first.");
+        } else {
+            printf("Password: \"%s\"\n", password);
+            printf("Minimum length (%d): %s\n", MIN_LENGTH,
+                   check_minimum_length(password) ? "PASS" : "FAIL");
+            printf("Required character types: %s\n",
+                   check_required_character_types(password) ? "PASS" : "FAIL");
+            printf("Top 20 common password: %s\n",
+                   is_common_password_top20(password) ? "YES (bad)" : "NO");
+            printf("Simple sequence found: %s\n",
+                   has_simple_sequence(password) ? "YES (bad)" : "NO");
+        }
+        go_back_to_main();
+        break;
+
+    case 4:
+    // Clear the saved password by turning it into an empty string
+        password[0] = '\0';
+        puts("Password cleared.");
+        go_back_to_main();
+        break;
+
+    case 5:
+    // this acts as Immediate program termination
+        puts("Goodbye.");
+        exit(0);
+
+    default:
+    // Any number not in 1 to 5 is invalid
+        puts("Invalid menu option.");
+        go_back_to_main();
+        break;
+    }
 }
 
 static void go_back_to_main(void)
 {
-    char buf[64];
-    do {
-        printf("\nEnter 'b' or 'B' to go back to main menu: ");
-        if (!fgets(buf, sizeof(buf), stdin)) {
-            puts("\nInput error. Exiting.");
-            exit(1);
-        }
-        buf[strcspn(buf, "\r\n")] = '\0'; /* strip newline */
-    } while (!(buf[0] == 'b' || buf[0] == 'B') || buf[1] != '\0');
+    // A pause so output stays visible until the user presses Enter
+    puts("\n(Press Enter to continue...)");
+    {
+        char tmp[8];
+        (void)fgets(tmp, sizeof tmp, stdin);
+    }
 }
 
-/* Return 1 if s is an optional [+/-] followed by one-or-more digits, else 0. */
 static int is_integer(const char *s)
 {
-    if (!s || !*s) return 0;
+    // Skip leading whitespace
+    while (*s && isspace((unsigned char)*s)) s++;
 
-    /* optional sign */
+    // it reject empty strings
+    if (*s == '\0') return 0;
+
+    // Must have at least one digit
     if (*s == '+' || *s == '-') s++;
 
-    /* must have at least one digit */
     if (!isdigit((unsigned char)*s)) return 0;
-
+    // all the remaining characters must be digits
     while (*s) {
         if (!isdigit((unsigned char)*s)) return 0;
         s++;
